@@ -1,0 +1,122 @@
+# Image Policies - Define which tags are acceptable (semver pattern)
+# All workloads use the same policy: latest semver tag matching v1.x.x
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: anomaly-detection
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: anomaly-detection
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: health-monitor
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: health-monitor
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: log-forwarder
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: log-forwarder
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: opcua-gateway
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: opcua-gateway
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: opcua-simulator
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: opcua-simulator
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: test-data-collector
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: test-data-collector
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: ev-battery-simulator
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: ev-battery-simulator
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: vision-simulator
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: vision-simulator
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: motion-simulator
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: motion-simulator
+  policy:
+    semver:
+      range: ">=1.0.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: motion-gateway
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: motion-gateway
+  policy:
+    semver:
+      range: ">=1.0.0"

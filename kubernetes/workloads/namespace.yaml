@@ -1,0 +1,7 @@
+﻿apiVersion: v1
+kind: Namespace
+metadata:
+  name: dmc-workloads
+  labels:
+    managed-by: flux
+    purpose: edge-workloads

@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-forwarder
+  namespace: dmc-workloads
+  labels:
+    app.kubernetes.io/name: log-forwarder
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Flux
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: log-forwarder
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: log-forwarder
+        app.kubernetes.io/version: "1.0.0"
+        app.kubernetes.io/managed-by: Flux
+    spec:
+
+      containers:
+        - name: log-forwarder
+          image: <your-acr-name>.azurecr.io/dmc/log-forwarder:v1.0.7 # {"$imagepolicy": "flux-system:log-forwarder"}
+          imagePullPolicy: Always
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 3000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          env:
+            - name: LOG_ANALYTICS_WORKSPACE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: log-analytics-connection
+                  key: workspaceId
+            - name: LOG_ANALYTICS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: log-analytics-connection
+                  key: key
+            - name: FORWARD_INTERVAL
+              value: "30"
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}

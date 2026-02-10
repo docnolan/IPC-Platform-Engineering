@@ -1,0 +1,9 @@
+# Azure Key Vault CSI Driver Configuration
+# Purpose: Pull secrets from Azure Key Vault into Kubernetes pods
+# This eliminates the need to store secrets in Git or manually create them
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - secret-provider-class.yaml

@@ -1,0 +1,81 @@
+parameters:
+  - name: workloadName
+    type: string
+  - name: dockerContext
+    type: string
+  - name: containerRegistry
+    type: string
+    default: '<your-acr-name>'
+  - name: imageTag
+    type: string
+    default: '$(Build.BuildId)'
+  - name: cosignKeyPath
+    type: string
+
+steps:
+  - task: Docker@2
+    displayName: 'Build ${{ parameters.workloadName }} Image'
+    inputs:
+      containerRegistry: '${{ parameters.containerRegistry }}'
+      repository: '${{ parameters.workloadName }}'
+      command: 'build'
+      Dockerfile: '${{ parameters.dockerContext }}/Dockerfile'
+      buildContext: '${{ parameters.dockerContext }}'
+      tags: |
+        ${{ parameters.imageTag }}
+
+  - script: |
+      # Download Trivy (Linux)
+      wget -q https://github.com/aquasecurity/trivy/releases/download/v0.48.0/trivy_0.48.0_Linux-64bit.tar.gz
+      tar zxvf trivy_0.48.0_Linux-64bit.tar.gz
+      
+      # Check for .trivyignore file (contains risk-accepted CVEs per docs/security/risk-register.md)
+      IGNOREFILE_OPT=""
+      if [ -f "${{ parameters.dockerContext }}/.trivyignore" ]; then
+          echo "Found .trivyignore - risk-accepted CVEs will be excluded from gating"
+          cat "${{ parameters.dockerContext }}/.trivyignore"
+          IGNOREFILE_OPT="--ignorefile ${{ parameters.dockerContext }}/.trivyignore"
+      fi
+      
+      # 1. Run Gatekeeper Scan (Fails on CRITICAL, respects .trivyignore)
+      echo "Running Critical Vulnerability Scan..."
+      ./trivy image --exit-code 1 --severity CRITICAL --no-progress $IGNOREFILE_OPT ${{ parameters.containerRegistry }}.azurecr.io/${{ parameters.workloadName }}:${{ parameters.imageTag }}
+      exit_code=$?
+      
+      if [ $exit_code -ne 0 ]; then
+          echo "CRITICAL VULNERABILITIES DETECTED. PIPELINE STOPPED."
+          echo "To accept a CVE risk, add it to ${{ parameters.dockerContext }}/.trivyignore and document in docs/security/risk-register.md"
+          exit 1
+      fi
+      
+      # 2. Run Reporting Scan (Just logs High/Medium)
+      echo "Running Informational Scan..."
+      ./trivy image --exit-code 0 --severity HIGH,MEDIUM --no-progress $IGNOREFILE_OPT ${{ parameters.containerRegistry }}.azurecr.io/${{ parameters.workloadName }}:${{ parameters.imageTag }}
+    displayName: 'Security Scan (Trivy)'
+
+  - task: Docker@2
+    displayName: 'Push ${{ parameters.workloadName }} Image'
+    inputs:
+      containerRegistry: '${{ parameters.containerRegistry }}'
+      repository: '${{ parameters.workloadName }}'
+      command: 'push'
+      tags: |
+        ${{ parameters.imageTag }}
+
+  - task: Docker@2
+    displayName: 'Login to ACR'
+    inputs:
+      containerRegistry: '${{ parameters.containerRegistry }}'
+      command: 'login'
+
+  - script: |
+      # Download Cosign (Linux)
+      wget "https://github.com/sigstore/cosign/releases/download/v2.2.1/cosign-linux-amd64"
+      mv cosign-linux-amd64 cosign
+      chmod +x cosign
+
+      # Sign
+      ./cosign sign --key "${{ parameters.cosignKeyPath }}" --tlog-upload=false ${{ parameters.containerRegistry }}.azurecr.io/${{ parameters.workloadName }}:${{ parameters.imageTag }}
+    displayName: 'Sign Image (Cosign)'
+    env:
+      COSIGN_PASSWORD: $(COSIGN_PASSWORD)

@@ -1,0 +1,33 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'docs/**'
+      - '*.md'
+      - 'terraform/*.md'
+      - 'pipelines/*.md'
+      - 'kubernetes/*.md'
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'docs/**'
+      - '*.md'
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+  - task: PowerShell@2
+    displayName: 'Validate Markdown Links'
+    inputs:
+      targetType: 'filePath'
+      filePath: '$(System.DefaultWorkingDirectory)/scripts/Validate-Docs.ps1'
+      arguments: '-RootPath "$(System.DefaultWorkingDirectory)"'
+      failOnStderr: true

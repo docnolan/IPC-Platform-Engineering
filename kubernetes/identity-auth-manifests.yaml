@@ -1,0 +1,236 @@
+# IPC Platform - Identity-Based Authentication Manifests
+# 
+# This file contains Kubernetes manifests for migrating from
+# secret-based to identity-based authentication.
+#
+# Apply in order:
+#   1. ServiceAccount annotations (if using Workload Identity)
+#   2. GitRepository update
+#   3. ImageRepository updates
+#   4. Remove old secrets (after verification)
+
+---
+# ============================================================================
+# OPTION A: Workload Identity for Flux (if OIDC is available)
+# ============================================================================
+# 
+# Prerequisites:
+#   - OIDC issuer enabled on Arc cluster
+#   - Managed Identity created (mi-flux-gitops)
+#   - Federated credential configured
+#   - Managed Identity granted access to Azure DevOps
+#
+# Apply the ServiceAccount patch:
+#   kubectl patch serviceaccount source-controller -n flux-system --patch-file flux-sa-patch.yaml
+
+# flux-sa-patch.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: source-controller
+  namespace: flux-system
+  annotations:
+    # Replace with actual client ID from setup script
+    azure.workload.identity/client-id: "<AZURE_CLIENT_ID>"
+  labels:
+    azure.workload.identity/use: "true"
+
+---
+# GitRepository with Workload Identity (Azure provider)
+# 
+# NOTE: As of Flux v2.2+, the 'azure' provider supports Workload Identity
+# for Azure DevOps when the ServiceAccount has the correct annotations.
+#
+# File: gitops/infrastructure/sources/git-repository.yaml
+
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: ipc-platform-config
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://dev.azure.com/<your-org>/IPC-Platform-Engineering/_git/IPC-Platform-Engineering
+  ref:
+    branch: main
+  # Option A: Workload Identity (no secretRef needed)
+  # Requires: ServiceAccount annotation + Federated Credential
+  provider: azure
+  # Option B: Keep PAT for now (comment out provider: azure)
+  # secretRef:
+  #   name: flux-gitops-readonly
+
+---
+# ============================================================================
+# OPTION B: Keep PAT but store in Azure Key Vault (Alternative)
+# ============================================================================
+#
+# If OIDC is not available (common for AKS Edge Essentials),
+# you can use External Secrets Operator to sync PAT from Key Vault.
+#
+# This provides:
+#   - Centralized secret management
+#   - Automatic rotation (when you update Key Vault)
+#   - Audit logging
+#
+# Prerequisites:
+#   - External Secrets Operator installed
+#   - Key Vault with PAT stored
+#   - Managed Identity with Key Vault access
+
+# external-secret-flux-pat.yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: flux-gitops-readonly
+  namespace: flux-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: azure-keyvault
+    kind: ClusterSecretStore
+  target:
+    name: flux-gitops-readonly
+    template:
+      type: Opaque
+      data:
+        username: "{{ .username }}"
+        password: "{{ .password }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: flux-git-username
+    - secretKey: password
+      remoteRef:
+        key: flux-git-pat
+
+---
+# ============================================================================
+# ACR IMAGE REPOSITORY - Managed Identity
+# ============================================================================
+#
+# For ACR, removing secretRef is sufficient when:
+#   - Arc agent has AcrPull role assigned
+#   - Using 'azure' provider tells Flux to use managed identity
+#
+# File: gitops/infrastructure/sources/image-repositories.yaml
+
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: anomaly-detection
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/anomaly-detection
+  interval: 5m
+  provider: azure
+  # REMOVED: secretRef - using managed identity instead
+  # secretRef:
+  #   name: acr-pull-secret
+
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: health-monitor
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/health-monitor
+  interval: 5m
+  provider: azure
+
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: log-forwarder
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/log-forwarder
+  interval: 5m
+  provider: azure
+
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: opcua-gateway
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/opcua-gateway
+  interval: 5m
+  provider: azure
+
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: test-data-collector
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/test-data-collector
+  interval: 5m
+  provider: azure
+
+---
+# ============================================================================
+# DEPLOYMENT PATCHES - Remove imagePullSecrets
+# ============================================================================
+#
+# After ACR managed identity is working, remove imagePullSecrets from deployments.
+# This can be done via Kustomize patches.
+#
+# File: gitops/apps/dmc-workloads/kustomization.yaml (add patch)
+
+# Add to kustomization.yaml:
+# patches:
+#   - patch: |-
+#       - op: remove
+#         path: /spec/template/spec/imagePullSecrets
+#     target:
+#       kind: Deployment
+#       namespace: dmc-workloads
+
+---
+# ============================================================================
+# VERIFICATION COMMANDS
+# ============================================================================
+#
+# After applying changes, verify with these commands:
+#
+# 1. Check GitRepository status:
+#    kubectl get gitrepository -n flux-system
+#    kubectl describe gitrepository ipc-platform-config -n flux-system
+#
+# 2. Check ImageRepository status:
+#    kubectl get imagerepository -n flux-system
+#    kubectl describe imagerepository anomaly-detection -n flux-system
+#
+# 3. Check for pull errors:
+#    kubectl get events -n dmc-workloads --sort-by='.lastTimestamp' | grep -i pull
+#
+# 4. Verify pods are running:
+#    kubectl get pods -n dmc-workloads
+#
+# 5. Check Flux logs for auth issues:
+#    kubectl logs -n flux-system deploy/source-controller | grep -i auth
+#    kubectl logs -n flux-system deploy/image-reflector-controller | grep -i auth
+
+---
+# ============================================================================
+# ROLLBACK PROCEDURE
+# ============================================================================
+#
+# If identity-based auth fails, rollback to secrets:
+#
+# 1. Re-add secretRef to GitRepository:
+#    kubectl patch gitrepository ipc-platform-config -n flux-system \
+#      --type=merge -p '{"spec":{"secretRef":{"name":"flux-gitops-readonly"},"provider":null}}'
+#
+# 2. Re-add secretRef to ImageRepositories:
+#    kubectl patch imagerepository anomaly-detection -n flux-system \
+#      --type=merge -p '{"spec":{"secretRef":{"name":"acr-pull-secret"},"provider":null}}'
+#
+# 3. Verify secrets still exist:
+#    kubectl get secret flux-gitops-readonly -n flux-system
+#    kubectl get secret acr-pull-secret -n flux-system

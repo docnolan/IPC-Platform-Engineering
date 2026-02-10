@@ -1,0 +1,102 @@
+# Image Repositories - Flux scans these ACR repositories for new tags
+# One ImageRepository per workload image
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: anomaly-detection
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/anomaly-detection
+  interval: 5m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: health-monitor
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/health-monitor
+  interval: 5m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: log-forwarder
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/log-forwarder
+  interval: 5m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: opcua-gateway
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/opcua-gateway
+  interval: 1m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: opcua-simulator
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/dmc/opcua-simulator
+  interval: 5m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: test-data-collector
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/ipc-platform/test-data-collector
+  interval: 1m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: ev-battery-simulator
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/dmc/ev-battery-simulator
+  interval: 5m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: vision-simulator
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/dmc/vision-simulator
+  interval: 5m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: motion-simulator
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/dmc/motion-simulator
+  interval: 5m
+  provider: azure
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: motion-gateway
+  namespace: flux-system
+spec:
+  image: <your-acr-name>.azurecr.io/dmc/motion-gateway
+  interval: 5m
+  provider: azure

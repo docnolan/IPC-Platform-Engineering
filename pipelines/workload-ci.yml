@@ -1,0 +1,81 @@
+trigger:
+  paths:
+    include:
+      - docker/**
+      - kubernetes/workloads/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: 'ipc-platform-variables'
+  - group: 'Security-Keys'
+  - name: containerRegistry
+    value: '<your-acr-name>'
+  - name: imageTag
+    value: '$(Build.BuildId)'
+  - name: cosignKeyPath
+    value: 'cosign.key'
+
+stages:
+  - stage: BuildAndSecure
+    displayName: 'Build, Scan, and Sign Workloads'
+    jobs:
+      - job: Build
+        displayName: 'Build Matrix'
+        strategy:
+          matrix:
+            OpcUaSimulator:
+              workloadName: 'opcua-simulator'
+              dockerContext: 'docker/opcua-simulator'
+            OpcUaGateway:
+              workloadName: 'opcua-gateway'
+              dockerContext: 'docker/opcua-gateway'
+            EvBatterySimulator:
+              workloadName: 'ev-battery-simulator'
+              dockerContext: 'docker/ev-battery-simulator'
+            VisionSimulator:
+              workloadName: 'vision-simulator'
+              dockerContext: 'docker/vision-simulator'
+            MotionSimulator:
+              workloadName: 'motion-simulator'
+              dockerContext: 'docker/motion-simulator'
+            MotionGateway:
+              workloadName: 'motion-gateway'
+              dockerContext: 'docker/motion-gateway'
+            SafetyController:
+              workloadName: 'anomaly-detection' # Mapping anomaly-detection to safety role
+              dockerContext: 'docker/anomaly-detection'
+            HealthMonitor:
+              workloadName: 'health-monitor'
+              dockerContext: 'docker/health-monitor'
+            LogForwarder:
+              workloadName: 'log-forwarder'
+              dockerContext: 'docker/log-forwarder'
+            TestDataCollector:
+              workloadName: 'test-data-collector'
+              dockerContext: 'docker/test-data-collector'
+        steps:
+          # 0. Download Cosign Key (Secure File)
+          - task: DownloadSecureFile@1
+            name: cosignKey
+            displayName: 'Download Cosign Private Key'
+            inputs:
+              secureFile: 'cosign.key'
+
+          # 1. Pre-deployment Validation (Policy Check)
+          - template: templates/validate-manifests.yml
+            parameters:
+              workloadName: $(workloadName)
+              dockerContext: $(dockerContext)
+              imageTag: $(imageTag)
+              containerRegistry: $(containerRegistry)
+
+          # 2. Build, Security Scan (Trivy), and Sign (Cosign)
+          - template: templates/docker-build-scan-sign.yml
+            parameters:
+              workloadName: $(workloadName)
+              dockerContext: $(dockerContext)
+              imageTag: $(imageTag)
+              containerRegistry: $(containerRegistry)
+              cosignKeyPath: $(cosignKey.secureFilePath)

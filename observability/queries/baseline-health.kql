@@ -1,0 +1,25 @@
+// Baseline Health Check: Restarts and High CPU
+// Checks for pods restarting frequently (Instability) and nodes/pods with high CPU (Resource Exhaustion)
+
+// 1. Pod Restarts (Looking for > 2 restarts in last hour)
+let RestartThreshold = 2;
+let TimeWindow = 1h;
+
+KubePodInventory
+| where TimeGenerated > ago(TimeWindow)
+| where ContainerRestartCount > 0
+| summarize MaxRestarts = max(ContainerRestartCount) by Name = ContainerName, Namespace = ServiceName, Pod = PodUid
+| where MaxRestarts > RestartThreshold
+| extend Issue = "High Restart Count"
+| project TimeGenerated = now(), Namespace, Name, Issue, Value = MaxRestarts
+
+// Union with CPU Spikes
+| union (
+    IPCHealthMonitor_CL 
+    | where TimeGenerated > ago(TimeWindow)
+    | where todouble(CPUUsage_d) > 85
+    | summarize MaxCPU = max(todouble(CPUUsage_d)) by Name = Computer_s
+    | extend Issue = "CPU Spike > 85%"
+    | project TimeGenerated = now(), Namespace = "Infrastructure", Name, Issue, Value = MaxCPU
+)
+| order by TimeGenerated desc

@@ -1,0 +1,68 @@
+// -----------------------------------------------------------------------
+// Compliance Evidence Queries
+// Framework: NIST 800-171 / CMMC Level 2
+// Extracted from: docs/wiki/09-Compliance-as-a-Service.md
+// -----------------------------------------------------------------------
+
+// -----------------------------------------------------------------------
+// Evidence 1: 90-Day Audit Log Retention
+// NIST Control: 3.3.8
+// Requirement: Verify audit logs exist for past 90 days
+// -----------------------------------------------------------------------
+IPCSecurityAudit_CL
+| where TimeGenerated > ago(90d)
+| summarize 
+    OldestEvent = min(TimeGenerated),
+    NewestEvent = max(TimeGenerated),
+    TotalEvents = count()
+| extend RetentionDays = datetime_diff('day', NewestEvent, OldestEvent)
+
+// -----------------------------------------------------------------------
+// Evidence 2: Logon Activity Summary
+// NIST Control: 3.3.1, 3.5.1
+// Requirement: All authentication events must be logged
+// -----------------------------------------------------------------------
+IPCSecurityAudit_CL
+| where TimeGenerated > ago(30d)
+| where EventType_s in ("Logon", "FailedLogon", "Logoff")
+| summarize 
+    TotalLogons = countif(EventType_s == "Logon"),
+    FailedLogons = countif(EventType_s == "FailedLogon"),
+    Logoffs = countif(EventType_s == "Logoff")
+  by Computer_s
+| extend FailureRate = round(100.0 * FailedLogons / (TotalLogons + FailedLogons), 2)
+
+// -----------------------------------------------------------------------
+// Evidence 3: Privileged Operations
+// NIST Control: 3.1.7
+// Requirement: Privileged function execution must be audited
+// -----------------------------------------------------------------------
+IPCSecurityAudit_CL
+| where TimeGenerated > ago(30d)
+| where EventID_d == 4672 or EventID_d == 4673
+| project TimeGenerated, Computer_s, Account_s, Description_s
+| order by TimeGenerated desc
+
+// -----------------------------------------------------------------------
+// Evidence 4: Configuration Changes
+// NIST Control: 3.4.5
+// Requirement: Configuration change tracking
+// -----------------------------------------------------------------------
+IPCSecurityAudit_CL
+| where TimeGenerated > ago(30d)
+| where EventType_s in ("AuditPolicyChange", "AccountChange", "ServiceInstall")
+| project TimeGenerated, Computer_s, EventType_s, Account_s, Description_s
+| order by TimeGenerated desc
+
+// -----------------------------------------------------------------------
+// Evidence 5: Failed Logon Attempts (Brute Force Detection)
+// NIST Control: 3.5.1
+// Requirement: Identify potential brute force attempts
+// -----------------------------------------------------------------------
+IPCSecurityAudit_CL
+| where TimeGenerated > ago(7d)
+| where EventID_d == 4625
+| summarize FailedAttempts = count() by bin(TimeGenerated, 1h), Computer_s, Account_s
+| where FailedAttempts >= 3
+| project TimeGenerated, Device = Computer_s, Account = Account_s, FailedAttempts
+| order by TimeGenerated desc

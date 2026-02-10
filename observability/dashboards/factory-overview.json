@@ -1,0 +1,65 @@
+{
+    "lenses": {
+        "0": {
+            "order": 0,
+            "parts": {
+                "0": {
+                    "position": {
+                        "x": 0,
+                        "y": 0,
+                        "colSpan": 3,
+                        "rowSpan": 2
+                    },
+                    "metadata": {
+                        "inputs": [
+                            {
+                                "name": "ComponentId",
+                                "value": "/subscriptions/${subscription_id}/resourceGroups/${resource_group}/providers/Microsoft.OperationalInsights/workspaces/${workspace_name}"
+                            }
+                        ],
+                        "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+                        "settings": {
+                            "content": {
+                                "query": "ContainerLogV2 | where PodName has 'opcua' | where LogMessage has 'Telemetry collected' | summarize count() by bin(TimeGenerated, 5m)",
+                                "chartType": "Line",
+                                "title": "OPC-UA Telemetry Ingestion"
+                            }
+                        }
+                    }
+                },
+                "1": {
+                    "position": {
+                        "x": 3,
+                        "y": 0,
+                        "colSpan": 3,
+                        "rowSpan": 2
+                    },
+                    "metadata": {
+                        "inputs": [],
+                        "type": "Extension/HubsExtension/PartType/MarkdownPart",
+                        "settings": {
+                            "content": {
+                                "settings": {
+                                    "content": "# Factory Floor Status\n**Environment:** <edge-vm-name>\n**GitOps:** Azure Arc Managed"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "metadata": {
+        "model": {
+            "timeRange": {
+                "value": {
+                    "relative": {
+                        "duration": 24,
+                        "timeUnit": 1
+                    }
+                },
+                "type": "MsPortalFx.Composition.Configuration.ValueTypes.TimeRange"
+            }
+        }
+    }
+}

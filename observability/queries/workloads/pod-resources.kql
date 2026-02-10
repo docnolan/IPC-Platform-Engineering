@@ -1,0 +1,16 @@
+// Workload: System Resources
+// Goal: Monitoring CPU/Memory usage per workload
+
+let TimeWindow = 1h;
+
+KubePodInventory
+| where TimeGenerated > ago(TimeWindow)
+| where ServiceName in ("dmc-workloads", "flux-system")
+| join kind=inner (
+    Perf
+    | where TimeGenerated > ago(TimeWindow)
+    | where ObjectName == "K8sContainer"
+    | where CounterName == "cpuUsageNanoCores"
+) on $left.ContainerID == $right.InstanceName
+| summarize AvgCPU = avg(CounterValue) by ContainerName, bin(TimeGenerated, 5m)
+| render timechart

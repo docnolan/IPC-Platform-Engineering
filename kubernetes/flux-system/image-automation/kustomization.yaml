@@ -1,0 +1,10 @@
+# Flux Image Automation Configuration
+# Purpose: Automatically update container image tags in Git when new images are pushed to ACR
+# Reference: https://fluxcd.io/flux/guides/image-update/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - image-repositories.yaml
+  - image-policies.yaml
+  - image-update-automation.yaml

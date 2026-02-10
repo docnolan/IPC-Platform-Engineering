@@ -1,0 +1,11 @@
+// Workload: Vision Simulator
+// Goal: Track Defect Detection Rate
+
+let TimeWindow = 24h;
+
+ContainerLogV2
+| where TimeGenerated > ago(TimeWindow)
+| where PodName has "vision"
+| where LogMessage has "DEFECT DETECTED"
+| summarize DefectCount = count() by bin(TimeGenerated, 1h)
+| render columnchart with (title="Vision System Defects per Hour")

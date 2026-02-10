@@ -1,0 +1,81 @@
+# Pre-Deployment Validation Template
+# Purpose: Validate manifests before deployment to catch common issues
+# Reference: Root Cause Analysis - Fix 4
+
+parameters:
+  - name: workloadName
+    type: string
+  - name: dockerContext
+    type: string
+  - name: imageTag
+    type: string
+  - name: containerRegistry
+    type: string
+    default: '<your-acr-name>'
+
+steps:
+  - script: |
+      echo "=== Pre-Deployment Validation ==="
+      echo "Workload: ${{ parameters.workloadName }}"
+      echo "Tag: ${{ parameters.imageTag }}"
+      
+      # 1. Validate Kustomize builds successfully
+      echo ""
+      echo "Step 1: Validating Kustomize build..."
+      WORKLOAD_NAME=$(echo "${{ parameters.workloadName }}" | sed 's|dmc/||')
+      if [ -f "kubernetes/workloads/${WORKLOAD_NAME}/kustomization.yaml" ]; then
+          kubectl kustomize kubernetes/workloads/${WORKLOAD_NAME}/ > /dev/null
+          if [ $? -eq 0 ]; then
+              echo "✅ Kustomize build successful"
+          else
+              echo "❌ Kustomize build failed"
+              exit 1
+          fi
+      else
+          echo "❌ Missing kustomization.yaml for ${WORKLOAD_NAME}"
+          exit 1
+      fi
+      
+      # 2. Validate deployment.yaml exists and is valid YAML
+      echo ""
+      echo "Step 2: Validating deployment manifest..."
+      DEPLOY_FILE="kubernetes/workloads/${WORKLOAD_NAME}/deployment.yaml"
+      if [ -f "$DEPLOY_FILE" ]; then
+          # Check for required fields
+          if grep -q "imagePullSecrets" "$DEPLOY_FILE"; then
+              echo "✅ imagePullSecrets configured"
+          else
+              echo "⚠️ Warning: imagePullSecrets not configured"
+          fi
+          
+          if grep -q "resources:" "$DEPLOY_FILE"; then
+              echo "✅ Resource limits configured"
+          else
+              echo "⚠️ Warning: No resource limits configured"
+          fi
+          
+          if grep -q "securityContext:" "$DEPLOY_FILE"; then
+              echo "✅ Security context configured"
+          else
+              echo "⚠️ Warning: No security context configured"
+          fi
+      else
+          echo "❌ Missing deployment.yaml"
+          exit 1
+      fi
+      
+      # 3. Validate .trivyignore exists
+      echo ""
+      echo "Step 3: Checking .trivyignore..."
+      if [ -f "${{ parameters.dockerContext }}/.trivyignore" ]; then
+          echo "✅ .trivyignore exists"
+      else
+          echo "⚠️ Warning: No .trivyignore file - pipeline may fail on known CVEs"
+      fi
+      
+      echo ""
+      echo "=== Validation Complete ==="
+    displayName: 'Pre-Deployment Validation'
+    failOnStderr: false
+
+

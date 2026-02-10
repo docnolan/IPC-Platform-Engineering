@@ -1,0 +1,42 @@
+﻿# Packer
+*.log
+packer_cache/
+output-*/
+
+# Secrets (NEVER commit these)
+*.env
+*credentials*
+*secret*
+azure-resources.env
+*.pkrvars.hcl
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Terraform (if used later)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Build outputs
+bin/
+obj/
+dist/
+
+# ============================================================================
+# Packer Build Artifacts (large files, not for Git)
+# ============================================================================
+packer/output-*/
+packer/packer_cache/
+*.vhdx
+*.vhd
+*.iso
+
+# Packer lock files
+*.lock

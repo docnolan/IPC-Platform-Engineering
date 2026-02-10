@@ -1,0 +1,83 @@
+trigger:
+  paths:
+    include:
+      - terraform/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: terraformVersion
+    value: '1.10.5'
+  - name: serviceConnection
+    value: 'azure-subscription' # Verified from screenshot
+  - name: subscriptionId
+    value: '<your-subscription-id>'
+
+stages:
+  - stage: Validate
+    displayName: Terraform Validate
+    jobs:
+      - job: Validate
+        steps:
+          - task: TerraformInstaller@1
+            displayName: Install Terraform
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - script: |
+              terraform fmt -check -recursive
+            displayName: Terraform Format Check
+            workingDirectory: $(System.DefaultWorkingDirectory)/terraform
+
+          - task: TerraformTaskV4@4
+            displayName: Terraform Init
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/environments/dev'
+              backendServiceArm: '$(serviceConnection)'
+              backendAzureRmResourceGroupName: 'rg-ipc-platform-tfstate'
+              backendAzureRmStorageAccountName: 'stipcplatformtfstate001'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'dev.terraform.tfstate'
+
+          - task: TerraformTaskV4@4
+            displayName: Terraform Validate
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/environments/dev'
+
+  - stage: Plan
+    displayName: Terraform Plan
+    dependsOn: Validate
+    condition: succeeded()
+    jobs:
+      - job: Plan
+        steps:
+          - task: TerraformInstaller@1
+            displayName: Install Terraform
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - task: TerraformTaskV4@4
+            displayName: Terraform Init
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/environments/dev'
+              backendServiceArm: '$(serviceConnection)'
+              backendAzureRmResourceGroupName: 'rg-ipc-platform-tfstate'
+              backendAzureRmStorageAccountName: 'stipcplatformtfstate001'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'dev.terraform.tfstate'
+
+          - task: TerraformTaskV4@4
+            displayName: Terraform Plan
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/environments/dev'
+              commandOptions: '-out=tfplan -var="subscription_id=$(subscriptionId)"'
+              environmentServiceNameAzureRM: '$(serviceConnection)'

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-data-collector
+  namespace: dmc-workloads
+  labels:
+    app.kubernetes.io/name: test-data-collector
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Flux
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: test-data-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-data-collector
+        app.kubernetes.io/version: "1.0.0"
+        app.kubernetes.io/managed-by: Flux
+    spec:
+
+      containers:
+        - name: test-data-collector
+          image: <your-acr-name>.azurecr.io/dmc/test-data-collector:v1.0.7 # {"$imagepolicy": "flux-system:test-data-collector"}
+          imagePullPolicy: Always
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 3000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          env:
+            - name: WATCH_DIR
+              value: "/data/test-results"
+            - name: BLOB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: blob-storage-connection
+                  key: connectionString
+            - name: BLOB_CONTAINER
+              value: "test-results"
+            - name: IOT_HUB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: iot-hub-connection
+                  key: connectionString
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: data-volume
+              mountPath: /data/test-results
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+        - name: data-volume
+          emptyDir: {}

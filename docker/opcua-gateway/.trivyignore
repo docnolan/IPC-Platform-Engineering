@@ -1,0 +1,4 @@
+# SQLite Integer Overflow (RiskID: RR-001)
+CVE-2025-7458
+# Zlib Integer Overflow (RiskID: RR-002)
+CVE-2023-45853

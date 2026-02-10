@@ -1,0 +1,17 @@
+﻿apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dmc-workloads
+
+resources:
+  - namespace.yaml
+  - opcua-simulator/
+  - opcua-gateway/
+  - health-monitor/
+  - log-forwarder/
+  - anomaly-detection/
+  - test-data-collector/
+  - ev-battery-simulator/
+  - vision-simulator/
+  - motion-simulator/
+  - motion-gateway/

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ev-battery-simulator
+  namespace: dmc-workloads
+  labels:
+    app.kubernetes.io/name: ev-battery-simulator
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Flux
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ev-battery-simulator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ev-battery-simulator
+        app.kubernetes.io/version: "1.0.0"
+        app.kubernetes.io/managed-by: Flux
+    spec:
+
+      containers:
+        - name: ev-battery-simulator
+          image: <your-acr-name>.azurecr.io/dmc/ev-battery-simulator:v1.0.7 # {"$imagepolicy": "flux-system:ev-battery-simulator"}
+          imagePullPolicy: Always
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 3000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          env:
+            - name: IOT_HUB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: iot-hub-connection
+                  key: connectionString
+            - name: DEVICE_ID
+              value: "ev-battery-lab-01"
+            - name: PUBLISH_INTERVAL
+              value: "0.5"
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}

@@ -1,0 +1,32 @@
+# Image Update Automation - Commits updated image tags back to Git
+# This is the component that actually updates the deployment manifests
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: workload-image-updates
+  namespace: flux-system
+spec:
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+    name: ipc-platform-config
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: flux-automation@ipc-platform.local
+        name: Flux Image Automation
+      messageTemplate: |
+        chore(deps): Update container images
+
+        {{range .Updated.Images}}
+        - {{.Repository}} → {{.Identifier}}
+        {{end}}
+    push:
+      branch: main
+  update:
+    path: ./kubernetes/workloads
+    strategy: Setters

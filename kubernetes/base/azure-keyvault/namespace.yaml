@@ -1,0 +1,10 @@
+# Namespace for Azure Key Vault CSI driver
+# The driver itself is typically installed via Helm or addon-enable in AKS
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-secrets
+  labels:
+    app.kubernetes.io/name: azure-keyvault-secrets
+    app.kubernetes.io/managed-by: Flux

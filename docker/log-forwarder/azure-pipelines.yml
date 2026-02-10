@@ -1,0 +1,44 @@
+name: $(Major).$(Minor).$(Rev)
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - docker/log-forwarder/**
+      - pipelines/templates/docker-build-scan-sign.yml
+
+variables:
+  - name: Major
+    value: 1
+  - name: Minor
+    value: 0
+  - name: Rev
+    value: $[counter(format('{0}.{1}', variables['Major'], variables['Minor']), 0)]
+  - name: workloadName
+    value: 'dmc/log-forwarder'
+  - name: dockerContext
+    value: 'docker/log-forwarder'
+  - group: Security-Keys
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+  - job: BuildAndDeliver
+    displayName: 'Build, Scan, Sign, Push'
+    steps:
+      - task: DownloadSecureFile@1
+        name: cosignKey
+        displayName: 'Download Cosign Private Key'
+        inputs:
+          secureFile: 'cosign.key'
+
+      - template: ../../pipelines/templates/docker-build-scan-sign.yml
+        parameters:
+          workloadName: $(workloadName)
+          dockerContext: $(dockerContext)
+          imageTag: 'v$(Major).$(Minor).$(Rev)'
+          cosignKeyPath: $(cosignKey.secureFilePath)
+

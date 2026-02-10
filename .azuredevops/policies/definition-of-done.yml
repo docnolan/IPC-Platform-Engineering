@@ -1,0 +1,66 @@
+# Documentation-as-Code Definition of Done
+# Apply these rules to all PRs in IPC-Platform-Engineering
+
+definition_of_done:
+  documentation_requirements:
+    # Workload changes require wiki updates
+    workload_changes:
+      trigger_paths:
+        - "docker/**/Dockerfile"
+        - "docker/**/src/**"
+        - "docker/**/azure-pipelines.yml"
+      required_docs:
+        - "docs/wiki/05-Workloads-OPC-UA.md (for opcua-*)"
+        - "docs/wiki/06-Workloads-Monitoring.md (for health-monitor, log-forwarder)"
+        - "docs/wiki/07-Workloads-Analytics.md (for anomaly-detection, test-data-collector, *-simulator)"
+      max_drift_days: 3
+
+    # Infrastructure changes require wiki updates
+    infrastructure_changes:
+      trigger_paths:
+        - "packer/**/*.pkr.hcl"
+        - "kubernetes/**/*.yaml"
+        - "pipelines/**/*.yml"
+      required_docs:
+        - "docs/wiki/02-Golden-Image-Pipeline.md (for packer)"
+        - "docs/wiki/03-Edge-Deployment.md (for kubernetes)"
+        - "docs/wiki/04-GitOps-Configuration.md (for flux-system)"
+        - "docs/wiki/08-CI-CD-Pipelines.md (for pipelines)"
+      max_drift_days: 3
+
+    # Compliance changes require IMMEDIATE documentation
+    compliance_changes:
+      trigger_paths:
+        - "compliance/**"
+        - "docs/security/**"
+        - "**/.trivyignore"
+      required_docs:
+        - "docs/wiki/09-Compliance-as-a-Service.md"
+        - "docs/security/risk-register.md"
+      max_drift_days: 0  # Same day
+
+    # New scripts must be documented
+    script_changes:
+      trigger_paths:
+        - "scripts/**/*.ps1"
+      required_docs:
+        - "docs/wiki/A2-Quick-Reference.md"
+      max_drift_days: 3
+
+  architectural_decisions:
+    adr_required_for:
+      - "New framework or tool adoption"
+      - "Technology selection (database, messaging, etc.)"
+      - "Breaking API or data format changes"
+      - "Security mechanism changes"
+      - "Deprecation of existing features"
+    adr_location: "docs/architecture/decisions/"
+    adr_template: "ADR-NNNN-[decision-title].md"
+
+  pr_checklist_items:
+    - "Documentation updated to reflect changes"
+    - "Code examples in docs are tested and working"
+    - "Internal wiki links validated"
+    - "No hardcoded credentials in examples"
+    - "ADR created if architectural decision made"
+    - "A1-Troubleshooting.md updated if new failure mode introduced"

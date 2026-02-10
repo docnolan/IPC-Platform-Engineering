@@ -1,0 +1,12 @@
+// Workload: EV Battery Simulator
+// Goal: Monitor Battery Temperature and Voltage
+
+let TimeWindow = 1h;
+
+ContainerLogV2
+| where TimeGenerated > ago(TimeWindow)
+| where PodName has "ev-battery"
+| where LogMessage has "Telemetry"
+| parse LogMessage with * "temperature": Temperature "," "voltage": Voltage "}"
+| project TimeGenerated, PodName, Temperature, Voltage
+| render timechart

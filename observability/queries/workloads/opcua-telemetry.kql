@@ -1,0 +1,12 @@
+// Workload: OPC-UA Simulator & Gateway
+// Goal: Visualize telemetry ingestion rate and latest values
+
+let TimeWindow = 1h;
+
+ContainerLogV2
+| where TimeGenerated > ago(TimeWindow)
+| where PodName has "opcua"
+| where LogMessage has "Telemetry collected"
+| parse LogMessage with * "data_preview=" TelemetryData
+| project TimeGenerated, PodName, TelemetryData
+| order by TimeGenerated desc
